@@ -2,7 +2,7 @@ name: Deploy site to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, allsp]
     paths: [wiki/**, ontology/**, site/**, .github/workflows/deploy-pages.yml]
   workflow_dispatch:
 

@@ -1,16 +1,14 @@
-# Command Center 컨텍스트
+# Command Center 컨텍스트 (ALLSP 데모)
 
 도메인 지식, 아키텍처, 용어 사전을 정리하는 공간입니다.
+사내 발표용으로 ALLSP 회계 ERP의 두 핵심 도메인(지출·예산)을 ontology + wiki로 모델링했습니다.
 
 ## 도메인
 
-> 아래는 **이커머스 영역의 예제 도메인**입니다. 이 템플릿을 가져간 팀은 학습 후 삭제하고 자기 팀 도메인으로 교체하세요. (자세한 정리 방법은 루트 [README.md](../README.md#step-5-예제-도메인--우리-팀-도메인))
-
 | 도메인 | 설명 | 상세 |
 |--------|------|------|
-| `commerce-catalog` | 상품 등록·카테고리·가격·검색 노출 | [README](commerce-catalog/README.md) · [architecture](commerce-catalog/architecture.md) |
-| `commerce-order` | 주문 생성·결제·환불·쿠폰 | [README](commerce-order/README.md) · [architecture](commerce-order/architecture.md) |
-| `commerce-inventory` | 재고 점유·확정·입고·저재고 알림 | [README](commerce-inventory/README.md) · [architecture](commerce-inventory/architecture.md) |
+| `acc-exp` | 회계/지출 — 품의 → 원인행위 → 결의 → 지급명령 → 전표 | [README](acc-exp/README.md) · [architecture](acc-exp/architecture.md) |
+| `bdg` | 회계/예산 — 차수·사업위계·과목체계·편성·통제 | [README](bdg/README.md) · [architecture](bdg/architecture.md) |
 
 ## 공통
 

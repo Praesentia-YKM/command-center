@@ -1,0 +1,133 @@
+# bdg 도메인
+# 회계 ERP의 예산 도메인. 사업위계 + 과목체계 + 차수별 편성 + 잔액 통제.
+
+domain:
+  id: bdg
+  name: 회계/예산
+  summary: |
+    회계연도별 예산차수(본예산/추경)와 정책/단위/세부사업 3계층 위계,
+    세출/세입 과목체계를 바탕으로 요구 → 조정 → 확정의 편성 단계를 운영한다.
+    지출 도메인(acc-exp)의 잔액 차감 대상이며, 엑셀 업로드 → 스테이징 → SP 반영의
+    편성 흐름을 갖는다.
+  wiki_root: wiki/bdg/
+
+entities:
+  # ── processes ───────────────────────────────────────────
+  - id: bdg-cpl-process
+    name: 예산편성 처리
+    type: process
+    summary: |
+      예산차수(본예산 M / 추경 S)를 잡고 정책/단위/세부사업 위계와 세출과목 체계에 따라
+      세출예산을 편성한다. 편성 단계는 요구(Y) → 조정(J) → 확정(H)이며, 엑셀 업로드 →
+      스테이징 테이블(BDG_EBDG_CPL_UPLOAD) → 반영(SP_CVR_MARKORD_UPDATE) 흐름으로 처리한다.
+    repo: ALLSP_STD
+    package: src/java/com/allsharp/bdg/com
+    wiki_doc: wiki/bdg/예산-편성-차수/README.md
+
+  - id: bdg-ctrl-process
+    name: 예산 통제
+    type: process
+    summary: |
+      지출 단계(품의/원인행위/결의)에서 BDG_EBDG_CPL 잔액을 검증하고 차감한다.
+      예산통제 단위는 다중과목 화면 기준 공급가액(SUPP)이며, 잔액 초과 시 진행을 차단한다.
+    repo: ALLSP_STD
+    package: src/java/com/allsharp/bdg/com
+    wiki_doc: wiki/bdg/예산-통제/README.md
+
+  # ── data ────────────────────────────────────────────────
+  - id: bdg-bdgdgr
+    name: BDG_BDGDGR · 예산차수
+    type: data
+    summary: |
+      회계연도별 예산차수 마스터. 본예산(BDG_CPL_DIV='M') / 추경('S')을 차수(BDG_DGR)로 구분한다.
+      편성/통제 모든 흐름의 진입점이다.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/bdg/com
+    wiki_doc: wiki/bdg/예산-편성-차수/README.md
+
+  - id: bdg-mng-cls
+    name: BDG_MNG_CLS · 정책사업
+    type: data
+    summary: |
+      사업 위계 최상위. (ACC_YY, MNG_CLS_CD) PK. 단위/세부사업의 상위.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/bdg/com
+    wiki_doc: wiki/bdg/사업-위계/README.md
+
+  - id: bdg-mng-biz
+    name: BDG_MNG_BIZ · 단위사업
+    type: data
+    summary: |
+      사업 위계 중간층. (ACC_YY, MNG_BIZ_CD) PK + FK MNG_CLS_CD.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/bdg/com
+    wiki_doc: wiki/bdg/사업-위계/README.md
+
+  - id: bdg-dtl-biz
+    name: BDG_DTL_BIZ · 세부사업
+    type: data
+    summary: |
+      사업 위계 최하위. (ACC_YY, DTL_BIZ_CD) PK + FK MNG_BIZ_CD, MNG_CLS_CD.
+      지출 도메인의 EXP_CST_SBJ.DTL_BIZ_CD가 직접 참조한다.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/bdg/com
+    wiki_doc: wiki/bdg/사업-위계/README.md
+
+  - id: bdg-ebdg-sbj
+    name: BDG_EBDG_SBJ · 지출과목
+    type: data
+    summary: |
+      세출(지출) 과목 체계. 목그룹(H) → 목(M) → 세목(S)의 3계층 트리.
+      MARK_ORD(10자리, LVL별 2자리)로 정렬 순서를 관리한다.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/bdg/com
+    wiki_doc: wiki/bdg/과목-체계/README.md
+
+  - id: bdg-ebdg-cpl
+    name: BDG_EBDG_CPL · 세출예산편성
+    type: data
+    summary: |
+      세출예산편성 트랜잭션 테이블. (ACC_YY + ACC_DIV + BDG_CPL_DIV + BDG_DGR + CPL_DIV +
+      DTL_BIZ_CD + DEPT_CD + EXP_SBJ + CPL_SEQ) PK. 지출 도메인 잔액 차감의 대상.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/bdg/com
+    wiki_doc: wiki/bdg/예산-통제/README.md
+
+relations:
+  # ── 사업 위계 (data → data) ─────────────────────────────
+  - from: bdg-mng-cls
+    to: bdg-mng-biz
+    type: owns
+    note: 정책사업 → 단위사업 (1:N).
+
+  - from: bdg-mng-biz
+    to: bdg-dtl-biz
+    type: owns
+    note: 단위사업 → 세부사업 (1:N).
+
+  # ── 편성 process → data ────────────────────────────────
+  - from: bdg-cpl-process
+    to: bdg-bdgdgr
+    type: references
+    note: 회계연도 + 본예산/추경 + 차수 조회.
+
+  - from: bdg-cpl-process
+    to: bdg-mng-cls
+    type: references
+    note: 정책사업 위계 조회 (단위/세부사업은 owns 체인으로 도달).
+
+  - from: bdg-cpl-process
+    to: bdg-ebdg-sbj
+    type: references
+    note: 세출과목 트리 조회.
+
+  - from: bdg-cpl-process
+    to: bdg-ebdg-cpl
+    type: produces
+    note: 편성구분(Y/J/H) 단계별 INSERT/UPDATE. 엑셀 업로드 → 반영 흐름.
+
+  # ── 통제 process → data ────────────────────────────────
+  - from: bdg-ctrl-process
+    to: bdg-ebdg-cpl
+    type: references
+    note: 잔액(공급가액 기준) 검증 및 차감 UPDATE.

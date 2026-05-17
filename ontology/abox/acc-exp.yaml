@@ -1,0 +1,178 @@
+# acc-exp 도메인
+# 회계 ERP의 지출 도메인. 품의 → 원인행위 → 결의 → 지급명령 → 회계전표 4단계 라이프사이클.
+
+domain:
+  id: acc-exp
+  name: 회계/지출
+  summary: |
+    지출 품의에서 시작해 원인행위·결의·지급명령을 거쳐 회계전표(ACC_SLIP)를 생성하는
+    지출 라이프사이클. 각 단계는 결재 워크플로우(상신 → 결재 → 확정/반려)와 상태 코드로
+    진행을 통제한다. 예산편성(bdg 도메인)의 잔액을 차감하고 분개유형 매핑(ACC_JMT)에 따라
+    차변/대변 전표를 생성한다. 다중 예산과목 + 다중 거래처를 지원하는 Multi 화면(102B/120/106)이
+    핵심 운영 화면이다.
+  wiki_root: wiki/acc-exp/
+
+entities:
+  # ── processes (지출 라이프사이클 4단계) ─────────────────
+  - id: exp-cst-process
+    name: 품의 처리
+    type: process
+    summary: |
+      지출 품의 등록·결재·확정 처리. 다중 예산과목 + 다중 분개유형 + 다중 거래처 입력을
+      받아 BDG_EBDG_CPL 잔액을 검증/차감하고 부채성 회계전표(SLIP_STAT='M')를 생성한다.
+      상태 코드 CST_STAT: 01(등록) → 91(상신) → 93(승인) / 15(반려).
+    repo: ALLSP_STD
+    package: src/java/com/allsharp/acc/exp
+    wiki_doc: wiki/acc-exp/다중과목-지출/README.md
+
+  - id: exp-oact-process
+    name: 원인행위 처리
+    type: process
+    summary: |
+      품의 승인 이후의 원인행위 단계. 다중과목 화면(102BMulti)에서는 품의와 같은 트랜잭션에서
+      OACT를 동시 생성한다. 상태 코드 OACT_STAT은 CST_STAT과 쌍을 이루어 전이한다.
+    repo: ALLSP_STD
+    package: src/java/com/allsharp/acc/exp
+    wiki_doc: wiki/acc-exp/지출-라이프사이클/README.md
+
+  - id: exp-res-process
+    name: 결의 처리
+    type: process
+    summary: |
+      지출결의 요청·승인·반려. 결의 승인 시 ACC_SLIP.SLIP_STAT이 'M'(미승인)에서 'S'(승인)로,
+      APP_STAT은 93(결재완료)으로 전이한다. RES_STAT: 02(등록) → 88(검토완료) → 93(승인) / 15(반려).
+      화면 ID: AccExp120Multi.
+    repo: ALLSP_STD
+    package: src/java/com/allsharp/acc/exp
+    wiki_doc: wiki/acc-exp/결재-워크플로우/README.md
+
+  - id: exp-pym-cmd-process
+    name: 지급명령 처리
+    type: process
+    summary: |
+      결의 확정된 건에 대한 지급명령(EXP_PYM_CMD) 등록·결재·전결. 결재완료/전결 시
+      52번 명령전표를 생성하고 PYM_STAT을 M(미지급) → J(지급완료)로 전이.
+      화면 ID: AccExp106Multi.
+    repo: ALLSP_STD
+    package: src/java/com/allsharp/acc/exp
+    wiki_doc: wiki/acc-exp/지출-라이프사이클/README.md
+
+  # ── data (핵심 테이블) ──────────────────────────────────
+  - id: exp-cst
+    name: EXP_CST · 지출품의
+    type: data
+    summary: |
+      지출품의 마스터. EXP_CST_NO를 PK로 가지며, 다중과목 화면에서 자식 테이블
+      EXP_CST_SBJ(예산과목 + JRNLZ_TY_CD 분개유형)와 EXP_CST_CLT(거래처)를 거느린다.
+      CST_STAT(공통코드 A64)로 상태를 관리한다.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/acc/exp
+    wiki_doc: wiki/acc-exp/다중과목-지출/README.md
+
+  - id: exp-oact
+    name: EXP_OACT · 원인행위
+    type: data
+    summary: |
+      원인행위 마스터. EXP_OACT_NO를 PK로 가지며, 동일 구조의 자식 테이블
+      EXP_OACT_SBJ / EXP_OACT_CLT를 가진다. OACT_STAT(공통코드 A68)로 상태 관리.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/acc/exp
+    wiki_doc: wiki/acc-exp/지출-라이프사이클/README.md
+
+  - id: exp-res
+    name: EXP_RES · 지출결의
+    type: data
+    summary: |
+      지출결의. RES_STAT(공통코드 A69)으로 02/88/93/15 상태 관리.
+      PYM_SLIP_NO/RES_SLIP_NO 컬럼으로 ACC_SLIP에 FK 연결.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/acc/exp
+    wiki_doc: wiki/acc-exp/결재-워크플로우/README.md
+
+  - id: exp-pym-cmd
+    name: EXP_PYM_CMD · 지급명령
+    type: data
+    summary: |
+      지급명령. CMD_STAT(공통코드 A61) 01(미결재)/91(상신)/93(전결)/15(반려).
+      SP(PKG_EA_RECOM$EA_RECOM_GUBUN)가 결재 단계에 따라 91/92/93을 직접 설정한다.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/acc/exp
+    wiki_doc: wiki/acc-exp/결재-워크플로우/README.md
+
+  - id: acc-slip
+    name: ACC_SLIP · 회계전표
+    type: data
+    summary: |
+      회계전표 마스터(ACC_SLIP) + 상세(ACC_SLIPDTS). SLIP_AMT에는 총금액(공급가 + 부가세)이
+      들어가며, 예산통제는 별개로 공급가액 기준이다. SLIP_STAT(M 미승인 / S 승인),
+      APP_STAT(01 미결재 / 93 결재완료)으로 상태 관리.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/acc/slp
+    wiki_doc: wiki/acc-exp/회계전표-생성/README.md
+
+  - id: acc-jmt
+    name: ACC_JMT · 분개유형 매핑
+    type: data
+    summary: |
+      예산과목 + 분개유형코드(JRNLZ_TY_CD) → 차변/대변 회계계정 매핑 테이블.
+      Multi 화면이 한 과목에 여러 분개유형을 허용하면서 이 매핑이 필수가 됐다.
+    repo: ALLSP_STD
+    package: src/resources/sqlmap/maria/acc
+    wiki_doc: wiki/acc-exp/회계전표-생성/README.md
+
+relations:
+  # ── 4단계 라이프사이클 (process → process) ─────────────
+  - from: exp-cst-process
+    to: exp-oact-process
+    type: triggers
+    note: |
+      품의 결재 완료(CST_STAT 93) 이후 원인행위 등록 가능. 다중과목 화면(102BMulti)에서는
+      같은 트랜잭션에서 OACT를 동시 생성하므로 단계 분리가 약하다.
+
+  - from: exp-oact-process
+    to: exp-res-process
+    type: triggers
+    note: 원인행위 확정(OACT_STAT 93) 이후 지출결의(120Multi) 가능.
+
+  - from: exp-res-process
+    to: exp-pym-cmd-process
+    type: triggers
+    note: 결의 확정(RES_STAT 93) 이후 지급명령(106Multi) 가능. PYM_STAT M → J 전이.
+
+  # ── process → data ─────────────────────────────────────
+  - from: exp-cst-process
+    to: exp-cst
+    type: produces
+    note: EXP_CST + 자식(EXP_CST_SBJ, EXP_CST_CLT) INSERT.
+
+  - from: exp-cst-process
+    to: acc-slip
+    type: produces
+    note: 부채성 전표 ACC_SLIP + ACC_SLIPDTS 생성. SLIP_STAT='M'.
+
+  - from: exp-cst-process
+    to: acc-jmt
+    type: references
+    note: 과목 + 분개유형코드(JRNLZ_TY_CD) → 차변/대변 매핑 조회.
+
+  - from: exp-oact-process
+    to: exp-oact
+    type: produces
+
+  - from: exp-res-process
+    to: exp-res
+    type: produces
+
+  - from: exp-res-process
+    to: acc-slip
+    type: triggers
+    note: 결의 승인 시 ACC_SLIP.SLIP_STAT 'M' → 'S', APP_STAT 93 전이.
+
+  - from: exp-pym-cmd-process
+    to: exp-pym-cmd
+    type: produces
+
+  - from: exp-pym-cmd-process
+    to: acc-slip
+    type: produces
+    note: 결재완료/전결 시 52번 명령전표 생성 (SP 호출).

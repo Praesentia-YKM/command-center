@@ -1,5 +1,5 @@
 # 공유 인프라 (Shared Infrastructure)
-# 도메인 간 공통으로 사용되는 인프라 컴포넌트의 인스턴스.
+# 도메인 간 공통으로 사용되는 인프라/스택 컴포넌트의 인스턴스.
 # 각 도메인 abox 파일에서 `deployed_in` 또는 `depends_on` 관계로 이 entity들을 참조한다.
 #
 # 규칙 (tbox.yaml axiom 참조):
@@ -7,44 +7,58 @@
 # - id는 도메인 전체에서 유일해야 한다.
 
 entities:
-  - id: mysql
-    name: MySQL
+  - id: mariadb
+    name: MariaDB
     type: infra
     summary: |
-      메인 RDB. 주문, 회원, 상품 마스터 등 트랜잭션과 강한 일관성이 필요한
-      비즈니스 데이터의 영속 저장소. 도메인별로 논리적 스키마를 분리해 사용한다.
+      ALLSP 표준 RDB. 모든 회계/예산 트랜잭션 데이터(EXP_*, ACC_*, BDG_*)의 1차 영속 저장소.
+      현장은 Oracle/MSSQL 환경도 운영되므로 매퍼는 3개 방언을 모두 지원한다.
 
-  - id: redis
-    name: Redis
+  - id: oracle
+    name: Oracle 11g+
     type: infra
     summary: |
-      인메모리 캐시 + 분산 락 + 단기 세션 저장소. 상품 상세 캐시, 재고 차감 시
-      동시성 제어용 분산 락, 장바구니 세션 등에 사용한다.
+      대형 사업장에서 채택되는 RDB. ROWNUM 기반 페이징, SYSDATE / NVL / FROM DUAL 등
+      방언이 MariaDB와 다르며, MyBatis 매퍼가 dialect별로 분기된다.
 
-  - id: kafka
-    name: Kafka
+  - id: mssql
+    name: MSSQL 2014+
     type: infra
     summary: |
-      도메인 간 이벤트 스트림. 주문 생성/취소, 결제 완료, 재고 변동 등의
-      도메인 이벤트를 비동기로 전파한다. 컨슈머는 도메인별로 group을 분리한다.
+      일부 공공/사학 사업장에서 채택되는 RDB. dbo. 접두사 + GETDATE / ISNULL / TOP·OFFSET
+      방언이 별도이며, 커스텀 함수(FN_*)도 dbo. 접두사로 호출된다.
 
-  - id: s3
-    name: S3
+  - id: tomcat
+    name: Apache Tomcat
     type: infra
     summary: |
-      오브젝트 스토리지. 상품 이미지, 송장/인보이스 PDF 등 바이너리 자산을
-      저장한다. CDN을 통해 외부 노출되며 원본은 비공개 버킷에 둔다.
+      WAS. Spring 기반 ALLSP_STD를 호스팅한다. 단일 인스턴스 또는 L4 로드밸런서 뒤
+      다중 인스턴스로 운영.
 
-  - id: elasticsearch
-    name: Elasticsearch
+  - id: spring
+    name: Spring Framework
     type: infra
     summary: |
-      검색 인덱스. 상품 검색, 카테고리/속성 기반 필터링, 키워드 자동완성에
-      사용한다. MySQL 상품 마스터를 Kafka 이벤트로 동기화한다.
+      백엔드 컨테이너. @Controller / @Service / @Repository 레이어, ExceptionResolver를
+      통한 AJAX 에러 자동 변환, DefaultVO 기반 세션/IP/프로그램 자동 주입을 담당한다.
 
-  - id: cloudfront
-    name: CloudFront
+  - id: mybatis
+    name: MyBatis
     type: infra
     summary: |
-      CDN. S3에 저장된 상품 이미지를 전 세계 엣지에서 캐시하여 제공한다.
-      이미지 리사이즈는 엣지 람다에서 처리한다.
+      SQL 매핑. sqlmap/maria, sqlmap/oracle, sqlmap/mssql 세 방언이 병렬로 존재하며,
+      DefaultDAO가 list/insert/update/selectByPk 등 공통 메서드를 제공한다.
+
+  - id: jsp
+    name: JSP
+    type: infra
+    summary: |
+      화면 템플릿. nimsHeader / nimsMain 표준 골격 + jsLib.jsp 공통 스크립트.
+      ${} EL이 ES6 템플릿 리터럴과 충돌하므로 JSP 안 JS는 문자열 연결 + function 선언문 규칙.
+
+  - id: dhtmlx
+    name: DHTMLX Grid 5
+    type: infra
+    summary: |
+      ALLSP 표준 그리드 컴포넌트. app_dhtmlxApi.js 커스텀 확장
+      (reGetCellRowIdData, reGridBind, reAttachEvent 등)을 통해 사용한다.

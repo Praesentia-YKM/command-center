@@ -3,43 +3,37 @@
 # Claude는 매 요청 시 이 파일을 먼저 읽고, 관련 도메인 파일로 이동한다.
 
 domains:
-  - id: commerce-catalog
-    path: 이커머스/상품-카탈로그
-    file: abox/commerce-catalog.yaml
-    summary: 상품 등록·분류·가격 관리·검색 노출을 다루는 카탈로그 도메인
+  - id: acc-exp
+    path: 회계/지출
+    file: abox/acc-exp.yaml
+    summary: 지출 품의 → 원인행위 → 결의 → 지급명령 → 전표 생성까지의 지출 라이프사이클
     repos:
-      - example-catalog-api
-      - example-catalog-worker
+      - ALLSP_STD
     infra:
-      - mysql
-      - redis
-      - kafka
-      - s3
-      - elasticsearch
-      - cloudfront
+      - mariadb
+      - oracle
+      - mssql
+      - tomcat
+      - spring
+      - mybatis
+      - jsp
+      - dhtmlx
 
-  - id: commerce-order
-    path: 이커머스/주문-결제
-    file: abox/commerce-order.yaml
-    summary: 주문 생성·결제·환불·쿠폰 적용을 다루는 도메인
+  - id: bdg
+    path: 회계/예산
+    file: abox/bdg.yaml
+    summary: 회계연도별 예산차수, 정책/단위/세부사업 위계, 세출/세입 과목체계, 요구→조정→확정 편성 흐름과 잔액 통제
     repos:
-      - example-order-api
+      - ALLSP_STD
     infra:
-      - mysql
-      - redis
-      - kafka
-
-  - id: commerce-inventory
-    path: 이커머스/재고-관리
-    file: abox/commerce-inventory.yaml
-    summary: 재고 점유·확정·입출고·저재고 알림을 다루는 도메인
-    repos:
-      - example-inventory-api
-      - example-inventory-worker
-    infra:
-      - mysql
-      - redis
-      - kafka
+      - mariadb
+      - oracle
+      - mssql
+      - tomcat
+      - spring
+      - mybatis
+      - jsp
+      - dhtmlx
 
 cross_domain: abox/cross-domain.yaml
 shared_infra: abox/infra.yaml
